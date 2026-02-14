@@ -1,113 +1,83 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { supabase } from "@/lib/supabase"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { useRouter } from "next/navigation"
-import { supabase } from "../lib/supabase"
 
 export default function Dashboard() {
   const router = useRouter()
+  const supabase = createClientComponentClient()
 
-  const [valor, setValor] = useState("")
   const [rides, setRides] = useState<any[]>([])
-  const [total, setTotal] = useState(0)
+  const [totalToday, setTotalToday] = useState(0)
+  const [totalMonth, setTotalMonth] = useState(0)
+  const [rideCount, setRideCount] = useState(0)
+
+  const fetchRides = async () => {
+    const { data } = await supabase
+      .from("rides")
+      .select("*")
+      .order("created_at", { ascending: false })
+
+    if (data) {
+      setRides(data)
+
+      const today = new Date()
+      const month = today.getMonth()
+
+      let todayTotal = 0
+      let monthTotal = 0
+
+      data.forEach((ride: any) => {
+        const rideDate = new Date(ride.created_at)
+
+        if (
+          rideDate.getDate() === today.getDate() &&
+          rideDate.getMonth() === today.getMonth()
+        ) {
+          todayTotal += ride.amount
+        }
+
+        if (rideDate.getMonth() === month) {
+          monthTotal += ride.amount
+        }
+      })
+
+      setTotalToday(todayTotal)
+      setTotalMonth(monthTotal)
+      setRideCount(data.length)
+    }
+  }
 
   useEffect(() => {
     fetchRides()
   }, [])
 
-  async function fetchRides() {
-    const { data, error } = await supabase
-      .from("rides")
-      .select("*")
-      .order("created_at", { ascending: false })
-
-    if (!error && data) {
-      setRides(data)
-
-      const soma = data.reduce(
-        (acc, ride) => acc + Number(ride.valor),
-        0
-      )
-      setTotal(soma)
-    }
-  }
-
-  async function addRide() {
-    if (!valor) return
-
-    const { data: userData } = await supabase.auth.getUser()
-
-    if (!userData.user) return
-
-    await supabase.from("rides").insert([
-      {
-        user_id: userData.user.id,
-        valor: Number(valor),
-      },
-    ])
-
-    setValor("")
-    fetchRides()
-  }
-
-  async function handleLogout() {
+  const logout = async () => {
     await supabase.auth.signOut()
-    router.push("/login")
+    router.push("/")
   }
 
   return (
-    <div className="min-h-screen bg-black text-white p-8">
-      
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-yellow-400">
-          Dashboard - Motora Pro
-        </h1>
+    <div style={{ padding: 20 }}>
+      <h1>Painel Operacional 🚗</h1>
 
-        <button
-          onClick={handleLogout}
-          className="px-4 py-2 bg-red-600 rounded-xl hover:scale-105 transition"
-        >
-          Sair
-        </button>
-      </div>
+      <h2>Ganhos Hoje: R$ {totalToday.toFixed(2)}</h2>
+      <h3>Total do Mês: R$ {totalMonth.toFixed(2)}</h3>
+      <h3>Corridas: {rideCount}</h3>
 
-      <div className="bg-gray-900 p-6 rounded-2xl border border-cyan-500 max-w-md">
+      <button onClick={logout}>Sair</button>
 
-        <h2 className="text-xl mb-4">Nova Corrida</h2>
+      <hr />
 
-        <input
-          type="number"
-          placeholder="Valor da corrida"
-          value={valor}
-          onChange={(e) => setValor(e.target.value)}
-          className="w-full p-3 mb-4 rounded-xl bg-black border border-gray-700"
-        />
-
-        <button
-          onClick={addRide}
-          className="w-full py-3 bg-yellow-500 text-black font-bold rounded-2xl hover:scale-105 transition"
-        >
-          Adicionar
-        </button>
-      </div>
-
-      <div className="mt-10">
-        <h2 className="text-2xl mb-4 text-cyan-400">
-          Total: R$ {total.toFixed(2)}
-        </h2>
-
-        <div className="space-y-3">
-          {rides.map((ride) => (
-            <div
-              key={ride.id}
-              className="bg-gray-800 p-4 rounded-xl border border-gray-700"
-            >
-              R$ {Number(ride.valor).toFixed(2)}
-            </div>
-          ))}
+      <h3>Histórico</h3>
+      {rides.map((ride) => (
+        <div key={ride.id}>
+          R$ {ride.amount} -{" "}
+          {new Date(ride.created_at).toLocaleDateString()}
         </div>
-      </div>
-
+      ))}
     </div>
   )
 }
