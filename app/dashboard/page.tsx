@@ -2,6 +2,15 @@
 
 import { useEffect, useState } from "react"
 import { supabase } from "../lib/supabase"
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+} from "recharts"
 
 export default function Dashboard() {
   const [valor, setValor] = useState("")
@@ -18,33 +27,34 @@ export default function Dashboard() {
     const { data: userData } = await supabase.auth.getUser()
     if (!userData.user) return
 
-    // Buscar corridas
     const { data: ridesData } = await supabase
       .from("rides")
       .select("*")
       .eq("user_id", userData.user.id)
-      .order("created_at", { ascending: false })
+      .order("created_at", { ascending: true })
 
     if (ridesData) {
-      setRides(ridesData)
-
       const today = new Date()
 
-      const todayTotal = ridesData
-        .filter((ride) => {
-          const rideDate = new Date(ride.created_at)
-          return (
-            rideDate.getDate() === today.getDate() &&
-            rideDate.getMonth() === today.getMonth() &&
-            rideDate.getFullYear() === today.getFullYear()
-          )
-        })
-        .reduce((acc, ride) => acc + Number(ride.valor), 0)
+      const todayRides = ridesData.filter((ride) => {
+        const rideDate = new Date(ride.created_at)
+        return (
+          rideDate.getDate() === today.getDate() &&
+          rideDate.getMonth() === today.getMonth() &&
+          rideDate.getFullYear() === today.getFullYear()
+        )
+      })
 
-      setTotalToday(todayTotal)
+      setRides(todayRides)
+
+      const total = todayRides.reduce(
+        (acc, ride) => acc + Number(ride.valor),
+        0
+      )
+
+      setTotalToday(total)
     }
 
-    // Buscar meta
     const { data: goalData } = await supabase
       .from("goals")
       .select("*")
@@ -98,6 +108,16 @@ export default function Dashboard() {
       ? dailyGoal - totalToday
       : 0
 
+  // 🔥 GRÁFICO ACUMULADO
+  let acumulado = 0
+  const chartData = rides.map((ride, index) => {
+    acumulado += Number(ride.valor)
+    return {
+      name: `#${index + 1}`,
+      total: acumulado,
+    }
+  })
+
   return (
     <div className="min-h-screen bg-black text-white p-8">
       <h1 className="text-3xl font-bold text-yellow-400 mb-6">
@@ -110,8 +130,8 @@ export default function Dashboard() {
 
         {dailyGoal ? (
           <>
-            <p className="mb-2">Meta: R$ {dailyGoal.toFixed(2)}</p>
-            <p className="mb-2 text-green-400">
+            <p>Meta: R$ {dailyGoal.toFixed(2)}</p>
+            <p className="text-green-400 mb-2">
               Ganhos Hoje: R$ {totalToday.toFixed(2)}
             </p>
 
@@ -123,7 +143,7 @@ export default function Dashboard() {
             </div>
 
             {remaining > 0 ? (
-              <p>Faltam R$ {remaining.toFixed(2)} para bater a meta</p>
+              <p>Faltam R$ {remaining.toFixed(2)}</p>
             ) : (
               <p className="text-green-400 font-bold">
                 🎉 Meta batida!
@@ -150,7 +170,7 @@ export default function Dashboard() {
       </div>
 
       {/* NOVA CORRIDA */}
-      <div className="bg-gray-900 p-6 rounded-2xl border border-cyan-500 max-w-md">
+      <div className="bg-gray-900 p-6 rounded-2xl border border-cyan-500 max-w-md mb-10">
         <h2 className="text-xl mb-4">Nova Corrida</h2>
 
         <input
@@ -169,17 +189,29 @@ export default function Dashboard() {
         </button>
       </div>
 
-      {/* LISTA */}
-      <div className="mt-10 space-y-3">
-        {rides.map((ride) => (
-          <div
-            key={ride.id}
-            className="bg-gray-800 p-4 rounded-xl border border-gray-700"
-          >
-            R$ {Number(ride.valor).toFixed(2)}
+      {/* GRÁFICO */}
+      {rides.length > 0 && (
+        <div className="bg-gray-900 p-6 rounded-2xl border border-yellow-500 mb-10">
+          <h2 className="text-xl mb-4">Evolução do Dia</h2>
+
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData}>
+                <CartesianGrid stroke="#333" />
+                <XAxis dataKey="name" stroke="#aaa" />
+                <YAxis stroke="#aaa" />
+                <Tooltip />
+                <Line
+                  type="monotone"
+                  dataKey="total"
+                  stroke="#facc15"
+                  strokeWidth={3}
+                />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
     </div>
   )
 }
