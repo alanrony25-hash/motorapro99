@@ -1,9 +1,12 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { supabase } from "../lib/supabase"
 
 export default function Dashboard() {
+  const router = useRouter()
+
   const [valor, setValor] = useState("")
   const [rides, setRides] = useState<any[]>([])
   const [total, setTotal] = useState(0)
@@ -21,7 +24,10 @@ export default function Dashboard() {
     if (!error && data) {
       setRides(data)
 
-      const soma = data.reduce((acc, ride) => acc + Number(ride.valor), 0)
+      const soma = data.reduce(
+        (acc, ride) => acc + Number(ride.valor),
+        0
+      )
       setTotal(soma)
     }
   }
@@ -44,11 +50,26 @@ export default function Dashboard() {
     fetchRides()
   }
 
+  async function handleLogout() {
+    await supabase.auth.signOut()
+    router.push("/login")
+  }
+
   return (
     <div className="min-h-screen bg-black text-white p-8">
-      <h1 className="text-3xl font-bold text-yellow-400 mb-6">
-        Dashboard - Motora Pro
-      </h1>
+      
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold text-yellow-400">
+          Dashboard - Motora Pro
+        </h1>
+
+        <button
+          onClick={handleLogout}
+          className="px-4 py-2 bg-red-600 rounded-xl hover:scale-105 transition"
+        >
+          Sair
+        </button>
+      </div>
 
       <div className="bg-gray-900 p-6 rounded-2xl border border-cyan-500 max-w-md">
 
@@ -86,6 +107,7 @@ export default function Dashboard() {
           ))}
         </div>
       </div>
+
     </div>
   )
 }
