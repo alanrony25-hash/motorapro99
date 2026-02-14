@@ -32,14 +32,14 @@ export default function Login() {
         </h1>
 
         <input
-          className="w-full p-3 mb-4 rounded-xl bg-black border border-gray-700"
+          className="w-full p-3 mb-4 rounded-xl bg-black border border-gray-700 focus:outline-none focus:border-cyan-500"
           placeholder="Email"
           onChange={(e) => setEmail(e.target.value)}
         />
 
         <input
           type="password"
-          className="w-full p-3 mb-6 rounded-xl bg-black border border-gray-700"
+          className="w-full p-3 mb-6 rounded-xl bg-black border border-gray-700 focus:outline-none focus:border-cyan-500"
           placeholder="Senha"
           onChange={(e) => setPassword(e.target.value)}
         />
@@ -50,6 +50,16 @@ export default function Login() {
         >
           Entrar
         </button>
+
+        <p className="text-center mt-6 text-gray-400">
+          Não tem conta?{" "}
+          <span
+            onClick={() => router.push("/register")}
+            className="text-cyan-400 cursor-pointer hover:underline"
+          >
+            Criar conta
+          </span>
+        </p>
 
       </div>
     </div>
