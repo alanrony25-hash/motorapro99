@@ -1,50 +1,91 @@
 "use client"
 
-import { useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 import { supabase } from "../lib/supabase"
 
 export default function Dashboard() {
-  const router = useRouter()
+  const [valor, setValor] = useState("")
+  const [rides, setRides] = useState<any[]>([])
+  const [total, setTotal] = useState(0)
 
   useEffect(() => {
-    const checkUser = async () => {
-      const { data } = await supabase.auth.getUser()
-
-      if (!data.user) {
-        router.push("/login")
-      }
-    }
-
-    checkUser()
+    fetchRides()
   }, [])
 
-  return (
-    <main className="min-h-screen bg-black text-white p-10">
+  async function fetchRides() {
+    const { data, error } = await supabase
+      .from("rides")
+      .select("*")
+      .order("created_at", { ascending: false })
 
-      <h1 className="text-4xl font-bold text-yellow-400 mb-8">
-        Painel Operacional 🚗
+    if (!error && data) {
+      setRides(data)
+
+      const soma = data.reduce((acc, ride) => acc + Number(ride.valor), 0)
+      setTotal(soma)
+    }
+  }
+
+  async function addRide() {
+    if (!valor) return
+
+    const { data: userData } = await supabase.auth.getUser()
+
+    if (!userData.user) return
+
+    await supabase.from("rides").insert([
+      {
+        user_id: userData.user.id,
+        valor: Number(valor),
+      },
+    ])
+
+    setValor("")
+    fetchRides()
+  }
+
+  return (
+    <div className="min-h-screen bg-black text-white p-8">
+      <h1 className="text-3xl font-bold text-yellow-400 mb-6">
+        Dashboard - Motora Pro
       </h1>
 
-      <div className="grid md:grid-cols-3 gap-6">
+      <div className="bg-gray-900 p-6 rounded-2xl border border-cyan-500 max-w-md">
 
-        <div className="bg-gray-900 p-6 rounded-2xl border border-cyan-500">
-          <h2 className="text-cyan-400 text-xl mb-2">Ganhos Hoje</h2>
-          <p className="text-3xl font-bold">R$ 0,00</p>
-        </div>
+        <h2 className="text-xl mb-4">Nova Corrida</h2>
 
-        <div className="bg-gray-900 p-6 rounded-2xl border border-yellow-500">
-          <h2 className="text-yellow-400 text-xl mb-2">Corridas</h2>
-          <p className="text-3xl font-bold">0</p>
-        </div>
+        <input
+          type="number"
+          placeholder="Valor da corrida"
+          value={valor}
+          onChange={(e) => setValor(e.target.value)}
+          className="w-full p-3 mb-4 rounded-xl bg-black border border-gray-700"
+        />
 
-        <div className="bg-gray-900 p-6 rounded-2xl border border-cyan-500">
-          <h2 className="text-cyan-400 text-xl mb-2">Performance</h2>
-          <p className="text-3xl font-bold">100%</p>
-        </div>
-
+        <button
+          onClick={addRide}
+          className="w-full py-3 bg-yellow-500 text-black font-bold rounded-2xl hover:scale-105 transition"
+        >
+          Adicionar
+        </button>
       </div>
 
-    </main>
+      <div className="mt-10">
+        <h2 className="text-2xl mb-4 text-cyan-400">
+          Total: R$ {total.toFixed(2)}
+        </h2>
+
+        <div className="space-y-3">
+          {rides.map((ride) => (
+            <div
+              key={ride.id}
+              className="bg-gray-800 p-4 rounded-xl border border-gray-700"
+            >
+              R$ {Number(ride.valor).toFixed(2)}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   )
 }
