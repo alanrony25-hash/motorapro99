@@ -28,7 +28,7 @@ export default function Home() {
 
         <div className="mt-12">
           <a
-            href="#"
+            href="/login"
             className="px-12 py-5 bg-yellow-500 text-black font-bold rounded-2xl hover:scale-110 transition duration-300 shadow-[0_0_40px_rgba(255,200,0,0.8)]"
           >
             ACESSAR PLATAFORMA
